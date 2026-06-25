@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>QuizMaster Pro — Premium Learning Platform</title>
+  <meta name="description" content="Gamified quiz platform for School, Intermediate, Polytechnic, B.Tech, Competitive exams and GK." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='52' font-size='52'%3E%F0%9F%8E%93%3C/text%3E%3C/svg%3E" />
+
+  <!-- Tailwind (CDN — perfect for GitHub Pages / no build step) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Alpine.js -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+  <style>
+    :root{
+      --bg:#0b1020; --card:#111933; --ink:#e6ecff; --muted:#9aa6c7;
+      --brand:#6366f1; --brand2:#8b5cf6; --good:#10b981; --bad:#ef4444; --warn:#f59e0b;
+    }
+    html,body{background:var(--bg);color:var(--ink);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Inter,sans-serif}
+    .glass{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(8px)}
+    .btn{display:inline-flex;align-items:center;gap:.5rem;padding:.6rem 1rem;border-radius:.75rem;font-weight:600;transition:transform .15s ease, box-shadow .2s ease}
+    .btn:hover{transform:translateY(-1px)}
+    .btn-primary{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;box-shadow:0 10px 30px rgba(99,102,241,.35)}
+    .btn-ghost{background:rgba(255,255,255,.06);color:var(--ink);border:1px solid rgba(255,255,255,.1)}
+    .chip{display:inline-block;padding:.2rem .6rem;border-radius:999px;font-size:.72rem;background:rgba(139,92,246,.15);color:#c4b5fd;border:1px solid rgba(139,92,246,.35)}
+    .opt{cursor:pointer;border:1px solid rgba(255,255,255,.1);border-radius:.85rem;padding:.85rem 1rem;background:rgba(255,255,255,.03);transition:.15s}
+    .opt:hover{background:rgba(99,102,241,.12);border-color:rgba(99,102,241,.5)}
+    .opt.correct{background:rgba(16,185,129,.15);border-color:#10b981}
+    .opt.wrong{background:rgba(239,68,68,.15);border-color:#ef4444}
+    .progress{height:8px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
+    .progress > span{display:block;height:100%;background:linear-gradient(90deg,var(--brand),var(--brand2));transition:width .3s}
+    .grad-text{background:linear-gradient(135deg,#a5b4fc,#f0abfc);-webkit-background-clip:text;background-clip:text;color:transparent}
+    /* Certificate */
+    .cert{background:#fff;color:#111;border:14px double #6366f1;border-radius:18px;padding:48px;font-family:Georgia,serif;position:relative}
+    .cert h1{font-size:42px;margin:8px 0;color:#3730a3;letter-spacing:1px}
+    .cert .name{font-size:36px;margin:18px 0;color:#111;border-bottom:2px dashed #c7d2fe;display:inline-block;padding:6px 16px}
+    .cert .seal{position:absolute;right:36px;bottom:36px;width:96px;height:96px;border-radius:50%;
+      background:radial-gradient(circle at 30% 30%,#fde68a,#f59e0b);display:grid;place-items:center;
+      color:#7c2d12;font-weight:800;border:4px double #92400e;transform:rotate(-12deg)}
+    /* Print: only print-area visible, A4 landscape */
+    @media print{
+      @page{size: A4 landscape; margin: 0}
+      html,body{background:#fff !important}
+      body *{visibility:hidden !important}
+      .print-area, .print-area *{visibility:visible !important}
+      .print-area{position:absolute;inset:0;margin:0;padding:24px;background:#fff;color:#000}
+      .no-print{display:none !important}
+    }
+    /* Mobile tweaks */
+    @media (max-width:640px){
+      .cert{padding:28px}
+      .cert h1{font-size:28px}
+      .cert .name{font-size:24px}
+    }
+  </style>
+</head>
+<body x-data="QuizMasterApp()" x-init="init()" x-cloak class="min-h-screen">
+
+  <!-- NAV -->
+  <header class="sticky top-0 z-40 glass">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
+      <div class="text-2xl">🎓</div>
+      <div class="font-extrabold tracking-tight">QuizMaster <span class="grad-text">Pro</span></div>
+      <nav class="ml-auto hidden md:flex items-center gap-1 text-sm">
+        <button class="btn btn-ghost" @click="view='home'" :class="view==='home' && 'ring-1 ring-indigo-400'">Home</button>
+        <button class="btn btn-ghost" @click="view='categories'" :class="view==='categories' && 'ring-1 ring-indigo-400'">Quizzes</button>
+        <button class="btn btn-ghost" @click="view='leaderboard'" :class="view==='leaderboard' && 'ring-1 ring-indigo-400'">Leaderboard</button>
+        <button class="btn btn-ghost" @click="view='analytics'" :class="view==='analytics' && 'ring-1 ring-indigo-400'">Analytics</button>
+        <button class="btn btn-ghost" @click="view='profile'" :class="view==='profile' && 'ring-1 ring-indigo-400'">Profile</button>
+      </nav>
+      <div class="ml-auto md:ml-3 flex items-center gap-2">
+        <span class="chip" x-text="user.name + ' · ' + user.xp + ' XP'"></span>
+      </div>
+    </div>
+    <!-- Mobile nav -->
+    <nav class="md:hidden max-w-6xl mx-auto px-3 pb-3 flex gap-2 overflow-x-auto text-sm">
+      <template x-for="t in ['home','categories','leaderboard','analytics','profile']" :key="t">
+        <button class="btn btn-ghost shrink-0" @click="view=t" x-text="t" :class="view===t && 'ring-1 ring-indigo-400'"></button>
+      </template>
+    </nav>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 py-8">
+
+    <!-- HOME -->
+    <section x-show="view==='home'" class="space-y-6">
+      <div class="glass rounded-2xl p-8 md:p-12">
+        <p class="chip mb-3">Premium Learning</p>
+        <h1 class="text-4xl md:text-6xl font-extrabold leading-tight">Master any subject with <span class="grad-text">QuizMaster Pro</span></h1>
+        <p class="text-[color:var(--muted)] mt-4 max-w-2xl">Gamified quizzes across School, Intermediate, Polytechnic, B.Tech, Competitive exams &amp; GK. Earn XP, climb the leaderboard, unlock badges and download your certificate.</p>
+        <div class="mt-6 flex flex-wrap gap-3">
+          <button class="btn btn-primary" @click="view='categories'">🚀 Start Learning</button>
+          <button class="btn btn-ghost" @click="view='leaderboard'">🏆 Leaderboard</button>
+        </div>
+      </div>
+      <div class="grid md:grid-cols-3 gap-4">
+        <template x-for="f in features" :key="f.t">
+          <div class="glass rounded-2xl p-5">
+            <div class="text-3xl" x-text="f.i"></div>
+            <div class="font-bold mt-2" x-text="f.t"></div>
+            <p class="text-sm text-[color:var(--muted)] mt-1" x-text="f.d"></p>
+          </div>
+        </template>
+      </div>
+    </section>
+
+    <!-- CATEGORIES -->
+    <section x-show="view==='categories'" class="space-y-6">
+      <h2 class="text-2xl font-bold">Choose a category</h2>
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <template x-for="(c,key) in QUIZZES" :key="key">
+          <div class="glass rounded-2xl p-5 hover:scale-[1.01] transition">
+            <div class="flex items-center gap-3">
+              <div class="text-3xl" x-text="c.icon"></div>
+              <div>
+                <div class="font-bold" x-text="c.title"></div>
+                <div class="text-xs text-[color:var(--muted)]" x-text="Object.keys(c.subjects).length + ' subjects'"></div>
+              </div>
+            </div>
+            <div class="mt-4 flex flex-wrap gap-2">
+              <template x-for="(s,sk) in c.subjects" :key="sk">
+                <button class="chip hover:bg-indigo-500/30" @click="startQuiz(key,sk)" x-text="s.name"></button>
+              </template>
+            </div>
+          </div>
+        </template>
+      </div>
+    </section>
+
+    <!-- QUIZ -->
+    <section x-show="view==='quiz'" class="space-y-4" x-cloak>
+      <div class="glass rounded-2xl p-5">
+        <div class="flex flex-wrap justify-between gap-3 items-center">
+          <div>
+            <div class="text-xs text-[color:var(--muted)]" x-text="quiz.categoryTitle + ' · ' + quiz.subjectName"></div>
+            <div class="font-bold" x-text="'Question ' + (quiz.index+1) + ' of ' + quiz.questions.length"></div>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="chip">⏱ <span x-text="formatTime(quiz.timeLeft)"></span></span>
+            <span class="chip">Score: <span x-text="quiz.score"></span></span>
+            <button class="btn btn-ghost text-sm" @click="quitQuiz()">Quit</button>
+          </div>
+        </div>
+        <div class="progress mt-4"><span :style="'width:' + ((quiz.index/quiz.questions.length)*100) + '%'"></span></div>
+      </div>
+
+      <div class="glass rounded-2xl p-6" x-show="currentQ()">
+        <p class="text-lg md:text-xl font-semibold mb-5" x-text="currentQ().q"></p>
+        <div class="grid sm:grid-cols-2 gap-3">
+          <template x-for="(opt,i) in currentQ().options" :key="i">
+            <div class="opt"
+                 :class="quiz.answered && (i===currentQ().answer ? 'correct' : (i===quiz.picked ? 'wrong' : ''))"
+                 @click="pick(i)">
+              <span class="font-bold mr-2" x-text="String.fromCharCode(65+i) + '.'"></span>
+              <span x-text="opt"></span>
+            </div>
+          </template>
+        </div>
+        <div class="mt-5 flex justify-end">
+          <button class="btn btn-primary" x-show="quiz.answered" @click="next()" x-text="quiz.index+1===quiz.questions.length ? 'Finish ✓' : 'Next →'"></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- RESULT -->
+    <section x-show="view==='result'" class="space-y-4">
+      <div class="glass rounded-2xl p-8 text-center">
+        <div class="text-6xl mb-3" x-text="result.percent>=80?'🏆':result.percent>=50?'🎉':'💪'"></div>
+        <h2 class="text-3xl font-bold">Quiz Complete!</h2>
+        <p class="text-[color:var(--muted)] mt-1" x-text="result.categoryTitle + ' · ' + result.subjectName"></p>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6">
+          <div class="glass rounded-xl p-4"><div class="text-xs text-[color:var(--muted)]">Score</div><div class="text-2xl font-bold" x-text="result.score + ' / ' + result.total"></div></div>
+          <div class="glass rounded-xl p-4"><div class="text-xs text-[color:var(--muted)]">Accuracy</div><div class="text-2xl font-bold" x-text="result.percent + '%'"></div></div>
+          <div class="glass rounded-xl p-4"><div class="text-xs text-[color:var(--muted)]">XP Earned</div><div class="text-2xl font-bold">+<span x-text="result.xp"></span></div></div>
+          <div class="glass rounded-xl p-4"><div class="text-xs text-[color:var(--muted)]">Time</div><div class="text-2xl font-bold" x-text="formatTime(result.duration)"></div></div>
+        </div>
+        <div class="mt-6 flex flex-wrap justify-center gap-2">
+          <button class="btn btn-primary" @click="showCert=true" x-show="result.percent>=50">🎖 View Certificate</button>
+          <button class="btn btn-ghost" @click="startQuiz(result.categoryKey, result.subjectKey)">🔁 Retry</button>
+          <button class="btn btn-ghost" @click="view='categories'">📚 More Quizzes</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- LEADERBOARD -->
+    <section x-show="view==='leaderboard'" class="space-y-4">
+      <h2 class="text-2xl font-bold">🏆 Leaderboard</h2>
+      <div class="glass rounded-2xl overflow-hidden">
+        <table class="w-full text-sm">
+          <thead class="bg-white/5 text-left"><tr>
+            <th class="p-3">#</th><th class="p-3">Player</th><th class="p-3">XP</th><th class="p-3">Quizzes</th><th class="p-3">Avg %</th>
+          </tr></thead>
+          <tbody>
+            <template x-for="(r,i) in leaderboard()" :key="r.name+i">
+              <tr class="border-t border-white/5">
+                <td class="p-3 font-bold" x-text="i+1"></td>
+                <td class="p-3" x-text="r.name + (r.you?' (you)':'')"></td>
+                <td class="p-3" x-text="r.xp"></td>
+                <td class="p-3" x-text="r.quizzes"></td>
+                <td class="p-3" x-text="r.avg + '%'"></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ANALYTICS -->
+    <section x-show="view==='analytics'" class="space-y-4">
+      <h2 class="text-2xl font-bold">📊 Your Analytics</h2>
+      <div class="grid md:grid-cols-3 gap-4">
+        <div class="glass rounded-2xl p-5"><div class="text-xs text-[color:var(--muted)]">Total Quizzes</div><div class="text-3xl font-extrabold" x-text="history.length"></div></div>
+        <div class="glass rounded-2xl p-5"><div class="text-xs text-[color:var(--muted)]">Average %</div><div class="text-3xl font-extrabold" x-text="avgPercent()+'%'"></div></div>
+        <div class="glass rounded-2xl p-5"><div class="text-xs text-[color:var(--muted)]">Total XP</div><div class="text-3xl font-extrabold" x-text="user.xp"></div></div>
+      </div>
+      <div class="glass rounded-2xl p-5">
+        <div class="font-bold mb-3">Recent Activity</div>
+        <div x-show="!history.length" class="text-[color:var(--muted)] text-sm">No quizzes yet. Take one to see analytics!</div>
+        <ul class="divide-y divide-white/5">
+          <template x-for="h in history.slice().reverse().slice(0,10)" :key="h.id">
+            <li class="py-2 flex justify-between text-sm">
+              <span x-text="h.categoryTitle + ' · ' + h.subjectName"></span>
+              <span class="text-[color:var(--muted)]" x-text="h.score+'/'+h.total+' · '+h.percent+'%'"></span>
+            </li>
+          </template>
+        </ul>
+      </div>
+    </section>
+
+    <!-- PROFILE -->
+    <section x-show="view==='profile'" class="space-y-4">
+      <h2 class="text-2xl font-bold">👤 Profile</h2>
+      <div class="glass rounded-2xl p-5 grid md:grid-cols-2 gap-4">
+        <div>
+          <label class="text-xs text-[color:var(--muted)]">Display name</label>
+          <input class="w-full mt-1 bg-white/5 border border-white/10 rounded-lg p-2 text-sm" x-model="user.name" @change="save()" />
+        </div>
+        <div class="text-sm">
+          <div>Rank: <span class="chip" x-text="rank()"></span></div>
+          <div class="mt-2">XP: <b x-text="user.xp"></b></div>
+          <div class="mt-2">Badges: <span x-show="!user.badges.length" class="text-[color:var(--muted)]">none yet</span>
+            <template x-for="b in user.badges" :key="b"><span class="chip mr-1" x-text="b"></span></template>
+          </div>
+        </div>
+        <div class="md:col-span-2">
+          <button class="btn btn-ghost text-sm" @click="if(confirm('Reset all local progress?')){resetAll()}">🗑 Reset progress</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="max-w-6xl mx-auto px-4 py-10 text-center text-xs text-[color:var(--muted)]">
+    © <span x-text="(new Date()).getFullYear()"></span> QuizMaster Pro · Client-side app · Built with Tailwind &amp; Alpine.js
+  </footer>
+
+  <!-- CERTIFICATE MODAL -->
+  <div x-show="showCert" x-cloak class="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4 no-print" @keydown.escape.window="showCert=false">
+    <div class="max-w-3xl w-full">
+      <div class="print-area">
+        <div class="cert">
+          <div class="text-center">
+            <div class="text-sm tracking-[.3em] text-indigo-700 font-bold">QUIZMASTER PRO</div>
+            <h1>Certificate of Achievement</h1>
+            <p class="text-gray-600">This is proudly presented to</p>
+            <div class="name" x-text="user.name"></div>
+            <p class="text-gray-700 max-w-xl mx-auto mt-3">For successfully completing the <b x-text="result.subjectName"></b> quiz under <b x-text="result.categoryTitle"></b> with a score of <b x-text="result.score+'/'+result.total+' ('+result.percent+'%)'"></b>.</p>
+            <div class="flex justify-between mt-10 text-sm text-gray-700">
+              <div>
+                <div class="font-bold border-t border-gray-400 pt-1 inline-block px-6">Date</div>
+                <div x-text="(new Date()).toLocaleDateString()"></div>
+              </div>
+              <div>
+                <div class="font-bold border-t border-gray-400 pt-1 inline-block px-6">Director</div>
+                <div>QuizMaster Pro</div>
+              </div>
+            </div>
+          </div>
+          <div class="seal">CERTIFIED</div>
+        </div>
+      </div>
+      <div class="mt-4 flex justify-end gap-2 no-print">
+        <button class="btn btn-ghost" @click="showCert=false">Close</button>
+        <button class="btn btn-primary" @click="downloadCertificate()">⬇ Download as PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="./quizmaster.js"></script>
+</body>
+</html>
